@@ -30,6 +30,12 @@ void init_interrupts()
     IPC1bits.T2IP = 0x01; // Set Timer2 Interrupt Priority Level
     IFS0bits.T2IF = 0; // Clear Timer2 Interrupt Flag
     IEC0bits.T2IE = 1; // Enable Timer2 interrupt
+    
+//    IPC2bits.T3IP = 0x01; // Set Timer3 Interrupt Priority Level
+//    IFS0bits.T3IF = 0; // Clear Timer3 Interrupt Flag
+//    IEC0bits.T3IE = 1; // Enable Timer3 interrupt
+    
+
 
 
 }

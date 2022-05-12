@@ -14,6 +14,7 @@
 
 volatile int seconds = 0;
 volatile int milliseconds = 0;
+volatile int minutes=0;
 
 
 void initialize_timer() {
@@ -73,6 +74,16 @@ void initialize_timer() {
     CLEARBIT(IFS0bits.T2IF); // Clear Timer2 Interrupt Flag
     SETBIT(IEC0bits.T2IE); // Enable Timer2 interrupt
     SETBIT(T2CONbits.TON); // Start Timer 
+    
+    // Timer 3 for measuring
+    CLEARBIT(T3CONbits.TON); // Disable Timer
+    CLEARBIT(T3CONbits.TCS); // Select internal instruction cycle clock
+    CLEARBIT(T3CONbits.TGATE); // Disable Gated Timer mode
+    TMR3 = 0x00; // Clear timer register
+    T3CONbits.TCKPS = 0b00; // Select 1:1 Prescaler
+    PR3 = 65535; // Load the period value
+    SETBIT(T3CONbits.TON); // Start Timer 
+    
 
 
 }
@@ -81,10 +92,20 @@ void timer_loop() {
     // print assignment information
     lcd_printf("Lab02: Int & Timer");
     lcd_locate(0, 1);
-    lcd_printf("Group: GroupName");
+    lcd_printf("Group: Group2");
     
     lcd_locate(0, 5);
     lcd_printf("Time: ");
+    
+    
+    lcd_locate(0, 6);
+    lcd_printf("Cycles: ");
+    
+    lcd_locate(0, 7);
+    lcd_printf("d: ");
+
+
+
     
     int count= 0;
     while (TRUE) {
@@ -92,10 +113,42 @@ void timer_loop() {
         
         if(count==2000)
         {
-            TOGGLEBIT(LED3_PORT);
+            TOGGLEBIT(LED3_PORT);    // not sure if it is toggling at the right speed
+            Nop();
             count=0;
             
             // display the time
+            lcd_locate(6, 5);
+            lcd_printf("%d",minutes);
+            lcd_printf(":");
+            lcd_printf("%d",seconds);
+            lcd_printf(":");
+            lcd_printf("%d",milliseconds);
+            
+            
+            lcd_locate(8, 6);
+            
+            //print cycles
+            lcd_printf("%u",TMR3);
+            
+            
+            
+            //print period
+            float period = ((float)((float)(TMR3/1000))/12800);
+            period = period * 1000;
+            lcd_locate(8, 7);
+            lcd_printf("%f", period);
+            
+            TMR3=0x00;
+
+
+
+
+
+
+            
+            
+
         }
         
     }
@@ -106,6 +159,16 @@ void __attribute__((__interrupt__, __shadow__, __auto_psv__)) _T1Interrupt(void)
     TOGGLEBIT(LED2_PORT);
     Nop();
     CLEARBIT(IFS0bits.T1IF); // Clear Timer1 Interrupt Flag
+    seconds++;
+    
+    if(seconds==60)
+    {
+        seconds=0;
+        minutes++;
+    }
+    
+    // we will increment seconds independently of ms while we think it is not correct
+    // and we should only use the millisecond for counting 
 
 
 
@@ -115,5 +178,11 @@ void __attribute__((__interrupt__, __shadow__, __auto_psv__)) _T2Interrupt(void)
     TOGGLEBIT(LED1_PORT);
     Nop();
     CLEARBIT(IFS0bits.T2IF); // Clear Timer2 Interrupt Flag
+    milliseconds=milliseconds+2;
+    
+    if(milliseconds>=999)
+    {
+        milliseconds=0;
+    }
 
 }
