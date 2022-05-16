@@ -54,6 +54,7 @@ void initialize_timer() {
     // Timer 1 1Sec for LED2
     CLEARBIT(T1CONbits.TON); //Disable Timer
     SETBIT(T1CONbits.TCS); //Select external clock  32.768 kHz 
+    CLEARBIT(T1CONbits.TGATE); // Disable Gated Timer mode
     CLEARBIT(T1CONbits.TSYNC); //Disable Synchronization     
     T1CONbits.TCKPS = 0b11; //Select 1:256 Prescaler
     TMR1 = 0x00; //Clear timer register
@@ -134,7 +135,7 @@ void timer_loop() {
             
             
             //print period
-            float period = ((float)((float)(TMR3/1000))/12800);
+            double period = ((double)((double)(TMR3/1000))/12800);
             period = period * 1000;
             lcd_locate(8, 7);
             lcd_printf("%f", period);
@@ -180,7 +181,7 @@ void __attribute__((__interrupt__, __shadow__, __auto_psv__)) _T2Interrupt(void)
     CLEARBIT(IFS0bits.T2IF); // Clear Timer2 Interrupt Flag
     milliseconds=milliseconds+2;
     
-    if(milliseconds>=999)
+    if(milliseconds>=998)
     {
         milliseconds=0;
     }
