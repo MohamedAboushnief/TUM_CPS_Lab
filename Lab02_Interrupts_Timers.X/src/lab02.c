@@ -118,6 +118,7 @@ void timer_loop() {
             Nop();
             count=0;
             
+            uint16_t timer3=TMR3;
             // display the time
             lcd_locate(6, 5);
             lcd_printf("%d",minutes);
@@ -130,12 +131,12 @@ void timer_loop() {
             lcd_locate(8, 6);
             
             //print cycles
-            lcd_printf("%u",TMR3);
+            lcd_printf("%u",timer3);
             
             
             
             //print period
-            double period = ((double)((double)(TMR3/1000))/12800);
+            double period = ((double)((double)(timer3/1000))/12800);
             period = period * 1000;
             lcd_locate(8, 7);
             lcd_printf("%f", period);
