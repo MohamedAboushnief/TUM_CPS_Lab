@@ -52,3 +52,5 @@ dkms.conf
 /Lab01_LCD_LED.X/dist/
 /Lab02_Interrupts_Timers.X/dist/
 /Lab02_Interrupts_Timers.X/build/
+/Lab03_DAC.X/build/
+/Lab03_DAC.X/dist/
