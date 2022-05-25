@@ -40,17 +40,23 @@ void dac_initialize()
     // see datasheet 11.3
     // set RD8, RB10, RB11, RB13 as output pins
     SETBIT(DAC_SCK_AD1CFG); // set Pin to Digital
+    Nop();
     SETBIT(DAC_SCK_AD2CFG); // set Pin to Digital
+    Nop();
     CLEARBIT(DAC_SCK_TRIS); // set Pin to Output
     Nop();
     
     SETBIT(DAC_SDI_AD1CFG); // set Pin to Digital
+    Nop();
     SETBIT(DAC_SDI_AD2CFG); // set Pin to Digital
+    Nop();
     CLEARBIT(DAC_SDI_TRIS); // set Pin to Output
     Nop();
 
     SETBIT(DAC_LDAC_AD1CFG); // set Pin to Digital
+    Nop();
     SETBIT(DAC_LDAC_AD2CFG); // set Pin to Digital
+    Nop();
     CLEARBIT(DAC_LDAC_TRIS); // set Pin to Output
     Nop();
 
@@ -72,6 +78,8 @@ void dac_initialize()
     CLEARBIT(DAC_SDI_PORT);
     Nop();
     SETBIT(DAC_LDAC_PORT);
+    Nop();
+
     
     
     
@@ -107,16 +115,24 @@ void timer_initialize()
 
 
 
-void DAC_procedure(uint16_t voltage)
+void DAC_procedure(uint16_t voltage, int row)
 {
     // clear CS
     CLEARBIT(DAC_CS_PORT);
+    Nop();
     int i=15;
+    lcd_locate(0, row);
     while(i>=0)
     {
         uint16_t value = voltage&BV(i);
         value = value >> i;
+        
+        
         DAC_SDI_PORT= value;
+        Nop();
+         
+//        lcd_printf("%d", value);
+        
         
         // toggle clock
         SETBIT(DAC_SCK_PORT);
@@ -136,10 +152,11 @@ void DAC_procedure(uint16_t voltage)
     
     
     //toggle LDAC
-    SETBIT(DAC_LDAC_PORT);
-    Nop(); 
-    Nop(); 
     CLEARBIT(DAC_LDAC_PORT);
+    Nop(); 
+    Nop(); 
+    SETBIT  (DAC_LDAC_PORT);
+    Nop();
 
 
     
@@ -168,10 +185,10 @@ void main_loop()
     
     while(TRUE)
     {
-        
-        DAC_procedure(volt_1);
-        DAC_procedure(volt_2);
-        DAC_procedure(volt_3);
+        int i=3;
+        DAC_procedure(volt_1,i);
+        DAC_procedure(volt_2,i+1);
+        DAC_procedure(volt_3,i+2);
         
         
         
