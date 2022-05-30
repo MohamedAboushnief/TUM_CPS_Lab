@@ -109,10 +109,59 @@ void timer_initialize()
     __builtin_write_OSCCONL(OSCCONL | 2);
     // configure timer
     
+    // Timer 2 2ms for LED1
+    CLEARBIT(T2CONbits.TON); // Disable Timer
+    CLEARBIT(T2CONbits.TCS); // Select internal instruction cycle clock
+    CLEARBIT(T2CONbits.TGATE); // Disable Gated Timer mode
+    TMR2 = 0x00; // Clear timer register
+    T2CONbits.TCKPS = 0b11; // Select 1:256 Prescaler
+    PR2 = 100; // Load the period value
+    IPC1bits.T2IP = 0x01; // Set Timer2 Interrupt Priority Level
+    CLEARBIT(IFS0bits.T2IF); // Clear Timer2 Interrupt Flag
+    SETBIT(IEC0bits.T2IE); // Enable Timer2 interrupt
+    SETBIT(T2CONbits.TON); // Start Timer 
+    
 }
 
 // interrupt service routine?
+volatile int milliseconds = 0;
+void __attribute__((__interrupt__, __shadow__, __auto_psv__)) _T2Interrupt(void) { // invoked every 2 ms
+    
+    CLEARBIT(IFS0bits.T2IF); // Clear Timer2 Interrupt Flag
+    
+    milliseconds=milliseconds+2;
+    switch(milliseconds){
+        
+    case 2:
+        DAC_procedure(14287,1); 
+        TOGGLEBIT(LED1_PORT); 
+        Nop();
+        CLEARBIT(IFS0bits.T2IF);
+        break;
+    
+    case 502:
+        DAC_procedure(6595,2);
+        TOGGLEBIT(LED1_PORT); 
+        Nop();
+        CLEARBIT(IFS0bits.T2IF);
+        break;
+      
+    case 2502:
+        DAC_procedure(7595,3);
+        TOGGLEBIT(LED1_PORT); 
+        Nop();
+        CLEARBIT(IFS0bits.T2IF);
+        break;
+        
+    case 3500:
+        milliseconds = 0;
+        break;
+            
+    }
+    
+  
 
+}
 
 
 void DAC_procedure(uint16_t voltage, int row)
@@ -185,13 +234,10 @@ void main_loop()
     
     while(TRUE)
     {
-        int i=3;
+        /*int i=3;
         DAC_procedure(volt_1,i);
         DAC_procedure(volt_2,i+1);
-        DAC_procedure(volt_3,i+2);
-        
-        
-        
-        
+        DAC_procedure(volt_3,i+2);*/
+           
     }
 }
