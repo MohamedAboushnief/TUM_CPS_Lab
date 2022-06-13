@@ -71,7 +71,7 @@ void __attribute__((__interrupt__, __shadow__, __auto_psv__)) _T3Interrupt(void)
     float v_out=Voltage_calculated(1.0/200*count);
     v_out = (v_out/4.096)*4096;//convert the v_out between 0V-4.096V and to 12 bits binary value
     count++;
-    uint16_t v = v_out+4096; //choose the mode among 13-16 bits
+    uint16_t v = v_out+4096; //choose the DAC mode among the 13-16th bits
     dac_convert_milli_volt(v);
     CLEARBIT(IFS0bits.T3IF);
     
