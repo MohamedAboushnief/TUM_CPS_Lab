@@ -9,17 +9,16 @@
 #include "lcd.h"
 #include "led.h"
 
-
-typedef enum{
+typedef enum {
     SERVO_1,
     SERVO_2
-}SERVO;
+} SERVO;
 
-typedef enum{
+typedef enum {
     x,
     y
-    
-}DIMENSION;
+
+} DIMENSION;
 
 
 /*
@@ -36,21 +35,19 @@ typedef enum{
 #define PWM_MAX_US 2000
 #define PWM_CYC_US 20000
 
-
-void adc_init(void)
-{
+void adc_init(void) {
     //disable ADC
     CLEARBIT(AD1CON1bits.ADON);
-    
+
     //initialize PINS
     SETBIT(TRISBbits.TRISB15); //set TRISE RB15 to input
     CLEARBIT(AD1PCFGLbits.PCFG15); //set AD1 AN15 input pin as analog
-    
+
     SETBIT(TRISBbits.TRISB9); //set TRISE RB9  to input
     CLEARBIT(AD1PCFGLbits.PCFG9); //set AD1 AN9 input pin as analog
 
     //Configure AD1CON1
-    CLEARBIT(AD1CON1bits.AD12B) //set 10b Operation Mode
+    CLEARBIT(AD1CON1bits.AD12B); //set 10b Operation Mode
     AD1CON1bits.FORM = 0; //set integer output
     AD1CON1bits.SSRC = 0x7; //set automatic conversion
     //Configure AD1CON2
@@ -64,38 +61,34 @@ void adc_init(void)
     SETBIT(AD1CON1bits.ADON);
 }
 
-    
-
-
 /*
  * touch screen code
  */
-void touch_screen_init(void){
-    
+void touch_screen_init(void) {
+
     adc_init();
     //set up the I/O pins E1, E2, E3 to be output pins
     CLEARBIT(TRISEbits.TRISE1); //I/O pin set to output
     CLEARBIT(TRISEbits.TRISE2); //I/O pin set to output
     CLEARBIT(TRISEbits.TRISE3); //I/O pin set to output
-   
+
     // x,y standby mode
-    
+
     SETBIT(PORTEbits.RE1);
     SETBIT(PORTEbits.RE2);
     CLEARBIT(PORTEbits.RE3);
-    
- 
+
+
 }
 
-touch_screen_dimension_set(DIMENSION dim){
-    
-    if(dim == x){
+touch_screen_dimension_set(DIMENSION dim) {
+
+    if (dim == x) {
         // set x coordinate as read
         CLEARBIT(PORTEbits.RE1);
         SETBIT(PORTEbits.RE2);
         SETBIT(PORTEbits.RE3);
-    }
-    else if(dim == y){
+    } else if (dim == y) {
         // set y coordinate as read
         SETBIT(PORTEbits.RE1);
         CLEARBIT(PORTEbits.RE2);
@@ -103,33 +96,29 @@ touch_screen_dimension_set(DIMENSION dim){
     }
 }
 
-
-uint16_t touch_screen_position_read_x(void)
-{
-    AD1CHS0bits.CH0SA = 0x0F; //set ADC to Sample AN20 pin
+uint16_t touch_screen_position_read_x(void) {
+    AD1CHS0bits.CH0SA = 0x0F; //set ADC to Sample AN15 pin
     SETBIT(AD1CON1bits.SAMP); //start to sample
-    while(!AD1CON1bits.DONE); //wait for conversion to finish
+    while (!AD1CON1bits.DONE); //wait for conversion to finish
     CLEARBIT(AD1CON1bits.DONE); //MUST HAVE! clear conversion done bit
     return ADC1BUF0; //return sample
-    
+
 }
-uint16_t touch_screen_position_read_y(void)
-{
-    AD1CHS0bits.CH0SA = 0x09; //set ADC to Sample AN20 pin
+
+uint16_t touch_screen_position_read_y(void) {
+    AD1CHS0bits.CH0SA = 0x09; //set ADC to Sample AN9 pin
     SETBIT(AD1CON1bits.SAMP); //start to sample
-    while(!AD1CON1bits.DONE); //wait for conversion to finish
+    while (!AD1CON1bits.DONE); //wait for conversion to finish
     CLEARBIT(AD1CON1bits.DONE); //MUST HAVE! clear conversion done bit
     return ADC1BUF0; //return sample
-    
+
 }
 
+void pwm_init(SERVO servo_x) {
 
-void pwm_init(SERVO servo_x ){
-    
-    
-    if(servo_x==SERVO_1)
-    {
-            //setup Timer 2
+
+    if (servo_x == SERVO_1) {
+        //setup Timer 2
         CLEARBIT(T2CONbits.TON); // Disable Timer
         CLEARBIT(T2CONbits.TCS); // Select internal instruction cycle clock
         CLEARBIT(T2CONbits.TGATE); // Disable Gated Timer mode
@@ -144,11 +133,9 @@ void pwm_init(SERVO servo_x ){
         OC8RS = 3820; /* Load OCRS: next pwm duty cycle */
         OC8CON = 0x0006; /* Set OC8: PWM, no fault check, Timer2 */
         SETBIT(T2CONbits.TON); /* Turn Timer 2 on */
-    }
-    else if(servo_x==SERVO_2)
-    {
-            //setup Timer 2
-            //The following code sets up OC8 to work in PWM mode and be controlled by Timer 2.
+    } else if (servo_x == SERVO_2) {
+        //setup Timer 2
+        //The following code sets up OC8 to work in PWM mode and be controlled by Timer 2.
         CLEARBIT(T2CONbits.TON); // Disable Timer
         CLEARBIT(T2CONbits.TCS); // Select internal instruction cycle clock
         CLEARBIT(T2CONbits.TGATE); // Disable Gated Timer mode
@@ -164,71 +151,84 @@ void pwm_init(SERVO servo_x ){
         OC7CON = 0x0006; /* Set OC8: PWM, no fault check, Timer2 */
         SETBIT(T2CONbits.TON); /* Turn Timer 2 on */
     }
-    
+
 
 }
 
 
 // initializing servo motors
-void servo_init(SERVO servo_x)
-{
-    if(servo_x==SERVO_1)
-    {
+
+void servo_init(SERVO servo_x) {
+    if (servo_x == SERVO_1) {
         pwm_init(SERVO_1);
-    }
-    else if(servo_x==SERVO_2)
-    {
+    } else if (servo_x == SERVO_2) {
         pwm_init(SERVO_2);
     }
-    
+
 }
 
+void servo_duty_cycle_set(SERVO servo_x, float duty_cycle) {
+    if (servo_x == SERVO_1) {
 
-void servo_duty_cycle_set(SERVO servo_x, float duty_cycle)
-{
-     if(servo_x==SERVO_1)
-    {
-         
-        OC8R = (duty_cycle/20.0)*4000; 
-        OC8RS = (duty_cycle/20.0)*4000; /* Load OCRS: next pwm duty cycle */
+        OC8R = (duty_cycle / 20.0)*4000;
+        OC8RS = (duty_cycle / 20.0)*4000; /* Load OCRS: next pwm duty cycle */
 
+    } else if (servo_x == SERVO_2) {
+        OC7R = (duty_cycle / 20.0)*4000;
+        OC7RS = (duty_cycle / 20.0)*4000; /* Load OCRS: next pwm duty cycle */
     }
-    else if(servo_x==SERVO_2)
-    {
-        OC7R = (duty_cycle/20.0)*4000; 
-        OC7RS = (duty_cycle/20.0)*4000; /* Load OCRS: next pwm duty cycle */
-    }
-    
+
 }
 
 /*
  * main loop
  */
 
-void main_loop()
-{
+void main_loop() {
     // print assignment information
     lcd_printf("Lab05: Touchscreen &\r\n");
     lcd_printf("       Servos");
     lcd_locate(0, 2);
     lcd_printf("Group: GroupName");
-    
+
     // initialize touchscreen
-    
+
     // initialize servos
     servo_init(SERVO_1);
     Nop();
     servo_init(SERVO_2);
     Nop();
-    
-    while(TRUE) { 
-        
-        servo_duty_cycle_set(SERVO_1,20-2.1);
+
+
+    touch_screen_init();
+
+
+
+
+
+    while (TRUE) {
+
+        servo_duty_cycle_set(SERVO_1, 20 - 0.9);
         Nop();
-        
-        
-        servo_duty_cycle_set(SERVO_2,20-2.1);
+
+
+        servo_duty_cycle_set(SERVO_2, 20 - 0.9);
         Nop();
+
+
+        lcd_locate(0, 4);
+        
+        
+        touch_screen_dimension_set(x);
+        uint16_t x_pos = touch_screen_position_read_x();
+        touch_screen_dimension_set(y);
+        uint16_t y_pos = touch_screen_position_read_y();
+
+        lcd_locate(0, 5);
+        lcd_printf("x pos: %d", x_pos);
+        lcd_locate(0, 6);
+        lcd_printf("y pos: %d", y_pos);
+
 
 
     }
