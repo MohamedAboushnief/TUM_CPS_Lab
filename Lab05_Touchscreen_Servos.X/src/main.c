@@ -28,6 +28,8 @@ int main(){
     lcd_clear();
     lcd_locate(0, 0);
     
+    
+    
     // Start Lab05 Main Program
     main_loop();
     

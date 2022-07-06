@@ -9,6 +9,12 @@
 #include "lcd.h"
 #include "led.h"
 
+
+// C function showing how to do time delay
+#include <stdio.h>
+// To use time library of C
+#include <time.h>
+
 typedef enum {
     SERVO_1,
     SERVO_2
@@ -59,6 +65,18 @@ void adc_init(void) {
     //Leave AD1CON4 at its default value
     //enable ADC
     SETBIT(AD1CON1bits.ADON);
+}
+
+void delay(float number_of_seconds) {
+    // Converting time into milli_seconds
+    int milli_seconds = 1000 * number_of_seconds;
+
+    // Storing start time
+    clock_t start_time = clock();
+
+    // looping till required time is not achieved
+    while (clock() < start_time + milli_seconds)
+        ;
 }
 
 /*
@@ -180,6 +198,14 @@ void servo_duty_cycle_set(SERVO servo_x, float duty_cycle) {
 
 }
 
+void servo_control(float servo_1, float servo_2) {
+        servo_duty_cycle_set(SERVO_1, servo_1);
+        Nop();Nop();
+
+        servo_duty_cycle_set(SERVO_2, servo_2);
+        Nop();Nop();
+    }
+
 /*
  * main loop
  */
@@ -202,32 +228,55 @@ void main_loop() {
 
     touch_screen_init();
 
+    
 
 
-
+    int count = 0;
 
     while (TRUE) {
 
-        servo_duty_cycle_set(SERVO_1, 20 - 0.9);
-        Nop();
+
+        if (count == 0) {
+            servo_control(20 - 0.9, 20 - 0.9);
+        } else if (count == 1) {
+            servo_control(20 - 0.9, 20 - 2.1);
+        } else if (count == 2) {
+            servo_control(20 - 2.1, 20 - 2.1);
+        } else if (count == 3) {
+            servo_control(20 - 2.1, 20 - 0.9);
+
+        }
 
 
-        servo_duty_cycle_set(SERVO_2, 20 - 0.9);
-        Nop();
+        count++;
 
+        if (count == 4) {
+            count = 0;
+        }
 
-        lcd_locate(0, 4);
         
-        
-        touch_screen_dimension_set(x);
-        uint16_t x_pos = touch_screen_position_read_x();
-        touch_screen_dimension_set(y);
-        uint16_t y_pos = touch_screen_position_read_y();
+        delay(1.1);
 
-        lcd_locate(0, 5);
-        lcd_printf("x pos: %d", x_pos);
-        lcd_locate(0, 6);
-        lcd_printf("y pos: %d", y_pos);
+
+//        lcd_locate(0, 4);
+//
+//
+//        touch_screen_dimension_set(x);
+//        uint16_t x_pos = touch_screen_position_read_x();
+//        lcd_locate(0, 5);
+//        lcd_printf("x pos: %d", x_pos);
+//        
+//        touch_screen_dimension_set(y);
+//        uint16_t y_pos = touch_screen_position_read_y();
+//        lcd_locate(0, 6);
+//        lcd_printf("y pos: %d", y_pos);
+
+
+
+
+
+
+
 
 
 
