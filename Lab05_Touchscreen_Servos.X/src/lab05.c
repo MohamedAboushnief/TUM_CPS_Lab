@@ -1,3 +1,4 @@
+
 #include "lab05.h"
 
 #include <xc.h>
@@ -44,13 +45,16 @@ typedef enum {
 void adc_init(void) {
     //disable ADC
     CLEARBIT(AD1CON1bits.ADON);
+    //disable ADC
+    //CLEARBIT(AD2CON1bits.ADON);
 
     //initialize PINS
-    SETBIT(TRISBbits.TRISB15); //set TRISE RB15 to input
+    SETBIT(TRISEbits.TRISE8);
+    //SETBIT(TRISBbits.TRISB15); //set TRISE RB15 to input
     CLEARBIT(AD1PCFGLbits.PCFG15); //set AD1 AN15 input pin as analog
 
-    SETBIT(TRISBbits.TRISB9); //set TRISE RB9  to input
-    CLEARBIT(AD1PCFGLbits.PCFG9); //set AD1 AN9 input pin as analog
+    //SETBIT(TRISBbits.TRISB9); //set TRISE RB9  to input
+    CLEARBIT(AD1PCFGLbits.PCFG9); //set AD2 AN9 input pin as analog
 
     //Configure AD1CON1
     CLEARBIT(AD1CON1bits.AD12B); //set 10b Operation Mode
@@ -65,18 +69,20 @@ void adc_init(void) {
     //Leave AD1CON4 at its default value
     //enable ADC
     SETBIT(AD1CON1bits.ADON);
-}
-
-void delay(float number_of_seconds) {
-    // Converting time into milli_seconds
-    int milli_seconds = 1000 * number_of_seconds;
-
-    // Storing start time
-    clock_t start_time = clock();
-
-    // looping till required time is not achieved
-    while (clock() < start_time + milli_seconds)
-        ;
+    
+    //Configure AD2CON1
+    /*CLEARBIT(AD2CON1bits.AD12B); //set 10b Operation Mode
+    AD2CON1bits.FORM = 0; //set integer output
+    AD2CON1bits.SSRC = 0x7; //set automatic conversion
+    //Configure AD2CON2
+    AD2CON2 = 0; //not using scanning sampling
+    //Configure AD2CON3
+    CLEARBIT(AD2CON3bits.ADRC); //internal clock source
+    AD2CON3bits.SAMC = 0x1F; //sample-to-conversion clock = 31Tad
+    AD2CON3bits.ADCS = 0x2; //Tad = 3Tcy (Time cycles)
+    //Leave AD2CON4 at its default value
+    //enable ADC
+    SETBIT(AD2CON1bits.ADON);*/
 }
 
 /*
@@ -87,34 +93,62 @@ void touch_screen_init(void) {
     adc_init();
     //set up the I/O pins E1, E2, E3 to be output pins
     CLEARBIT(TRISEbits.TRISE1); //I/O pin set to output
+    Nop();
+    Nop();
     CLEARBIT(TRISEbits.TRISE2); //I/O pin set to output
+    Nop();
+    Nop();
     CLEARBIT(TRISEbits.TRISE3); //I/O pin set to output
+    Nop();
+    Nop();
 
     // x,y standby mode
 
     SETBIT(PORTEbits.RE1);
+    Nop();
+    Nop();
     SETBIT(PORTEbits.RE2);
+    Nop();
+    Nop();
     CLEARBIT(PORTEbits.RE3);
+    Nop();
+    Nop();
 
 
 }
 
 touch_screen_dimension_set(DIMENSION dim) {
-
     if (dim == x) {
         // set x coordinate as read
+        
         CLEARBIT(PORTEbits.RE1);
+        Nop();
+        Nop();
         SETBIT(PORTEbits.RE2);
+        Nop();
+        Nop();
         SETBIT(PORTEbits.RE3);
+        Nop();
+        Nop();
+        __delay_ms(50);
     } else if (dim == y) {
         // set y coordinate as read
+        
         SETBIT(PORTEbits.RE1);
+        Nop();
+        Nop();
         CLEARBIT(PORTEbits.RE2);
+        Nop();
+        Nop();
         CLEARBIT(PORTEbits.RE3);
+        Nop();
+        Nop();
+        __delay_ms(50);
     }
 }
 
 uint16_t touch_screen_position_read_x(void) {
+    
     AD1CHS0bits.CH0SA = 0x0F; //set ADC to Sample AN15 pin
     SETBIT(AD1CON1bits.SAMP); //start to sample
     while (!AD1CON1bits.DONE); //wait for conversion to finish
@@ -124,6 +158,7 @@ uint16_t touch_screen_position_read_x(void) {
 }
 
 uint16_t touch_screen_position_read_y(void) {
+    
     AD1CHS0bits.CH0SA = 0x09; //set ADC to Sample AN9 pin
     SETBIT(AD1CON1bits.SAMP); //start to sample
     while (!AD1CON1bits.DONE); //wait for conversion to finish
@@ -132,42 +167,38 @@ uint16_t touch_screen_position_read_y(void) {
 
 }
 
+void init_timer() {
+    //setup Timer 2
+    CLEARBIT(T2CONbits.TON); // Disable Timer
+    CLEARBIT(T2CONbits.TCS); // Select internal instruction cycle clock
+    CLEARBIT(T2CONbits.TGATE); // Disable Gated Timer mode
+    TMR2 = 0x00; // Clear timer register
+    T2CONbits.TCKPS = 0b10; // Select 1:64 Prescaler
+    CLEARBIT(IFS0bits.T2IF); // Clear Timer2 interrupt status flag
+    CLEARBIT(IEC0bits.T2IE); // Disable Timer2 interrupt enable control bit
+    PR2 = 4000; // Set timer period 20ms: // 4000= 20*10^-3 * 12.8*10^6 * 1/64
+    SETBIT(T2CONbits.TON); /* Turn Timer 2 on */
+}
+
 void pwm_init(SERVO servo_x) {
 
 
     if (servo_x == SERVO_1) {
-        //setup Timer 2
-        CLEARBIT(T2CONbits.TON); // Disable Timer
-        CLEARBIT(T2CONbits.TCS); // Select internal instruction cycle clock
-        CLEARBIT(T2CONbits.TGATE); // Disable Gated Timer mode
-        TMR2 = 0x00; // Clear timer register
-        T2CONbits.TCKPS = 0b10; // Select 1:64 Prescaler
-        CLEARBIT(IFS0bits.T2IF); // Clear Timer2 interrupt status flag
-        CLEARBIT(IEC0bits.T2IE); // Disable Timer2 interrupt enable control bit
-        PR2 = 4000; // Set timer period 20ms: // 4000= 20*10^-3 * 12.8*10^6 * 1/64
+
         //setup OC8
         CLEARBIT(TRISDbits.TRISD7); /* Set OC8 as output */
         OC8R = 3820; /* Set the initial duty cycle to 5ms*/
         OC8RS = 3820; /* Load OCRS: next pwm duty cycle */
         OC8CON = 0x0006; /* Set OC8: PWM, no fault check, Timer2 */
-        SETBIT(T2CONbits.TON); /* Turn Timer 2 on */
+
     } else if (servo_x == SERVO_2) {
-        //setup Timer 2
-        //The following code sets up OC8 to work in PWM mode and be controlled by Timer 2.
-        CLEARBIT(T2CONbits.TON); // Disable Timer
-        CLEARBIT(T2CONbits.TCS); // Select internal instruction cycle clock
-        CLEARBIT(T2CONbits.TGATE); // Disable Gated Timer mode
-        TMR2 = 0x00; // Clear timer register
-        T2CONbits.TCKPS = 0b10; // Select 1:64 Prescaler
-        CLEARBIT(IFS0bits.T2IF); // Clear Timer2 interrupt status flag
-        CLEARBIT(IEC0bits.T2IE); // Disable Timer2 interrupt enable control bit
-        PR2 = 4000; // Set timer period 20ms: // 4000= 20*10^-3 * 12.8*10^6 * 1/64
+
         //setup OC8
         CLEARBIT(TRISDbits.TRISD6); /* Set OC7 as output */
         OC7R = 3820; /* Set the initial duty cycle to 5ms*/
         OC7RS = 3820; /* Load OCRS: next pwm duty cycle */
         OC7CON = 0x0006; /* Set OC8: PWM, no fault check, Timer2 */
-        SETBIT(T2CONbits.TON); /* Turn Timer 2 on */
+
     }
 
 
@@ -199,12 +230,13 @@ void servo_duty_cycle_set(SERVO servo_x, float duty_cycle) {
 }
 
 void servo_control(float servo_1, float servo_2) {
-        servo_duty_cycle_set(SERVO_1, servo_1);
-        Nop();Nop();
-
-        servo_duty_cycle_set(SERVO_2, servo_2);
-        Nop();Nop();
-    }
+    servo_duty_cycle_set(SERVO_1, servo_1);
+    Nop();
+    Nop();
+    servo_duty_cycle_set(SERVO_2, servo_2);
+    Nop();
+    Nop();
+}
 
 /*
  * main loop
@@ -217,33 +249,42 @@ void main_loop() {
     lcd_locate(0, 2);
     lcd_printf("Group: GroupName");
 
+    // initialize timer2
+    init_timer();
     // initialize touchscreen
 
     // initialize servos
     servo_init(SERVO_1);
     Nop();
+    Nop();
     servo_init(SERVO_2);
     Nop();
-
+    Nop();
 
     touch_screen_init();
 
+
     
 
-
     int count = 0;
-
+    __delay_ms(5000);
     while (TRUE) {
 
 
-        if (count == 0) {
+      if (count == 0) {
             servo_control(20 - 0.9, 20 - 0.9);
+            
+            
         } else if (count == 1) {
             servo_control(20 - 0.9, 20 - 2.1);
+            
+            
         } else if (count == 2) {
             servo_control(20 - 2.1, 20 - 2.1);
+            
         } else if (count == 3) {
             servo_control(20 - 2.1, 20 - 0.9);
+            
 
         }
 
@@ -255,25 +296,28 @@ void main_loop() {
         }
 
         
-        delay(1.1);
-
-
-//        lcd_locate(0, 4);
-//
-//
-//        touch_screen_dimension_set(x);
-//        uint16_t x_pos = touch_screen_position_read_x();
-//        lcd_locate(0, 5);
-//        lcd_printf("x pos: %d", x_pos);
-//        
-//        touch_screen_dimension_set(y);
-//        uint16_t y_pos = touch_screen_position_read_y();
-//        lcd_locate(0, 6);
-//        lcd_printf("y pos: %d", y_pos);
+        
 
 
 
+        
 
+
+        touch_screen_dimension_set(x);
+        uint16_t x_pos = touch_screen_position_read_x();
+        touch_screen_dimension_set(y);
+        uint16_t y_pos = touch_screen_position_read_y();
+        lcd_locate(0, 7);
+        lcd_printf("                ");
+        lcd_locate(0, 7);
+        lcd_printf("X/Y: %d/%d", x_pos, y_pos);
+        
+        
+        
+        __delay_ms(4000);
+
+
+        
 
 
 

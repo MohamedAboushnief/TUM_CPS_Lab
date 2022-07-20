@@ -70,7 +70,7 @@ void initialize_timer() {
     CLEARBIT(T2CONbits.TGATE); // Disable Gated Timer mode
     TMR2 = 0x00; // Clear timer register
     T2CONbits.TCKPS = 0b11; // Select 1:256 Prescaler
-    PR2 = 100; // Load the period value
+    PR2 = 250; // Load the period value
     IPC1bits.T2IP = 0x01; // Set Timer2 Interrupt Priority Level
     CLEARBIT(IFS0bits.T2IF); // Clear Timer2 Interrupt Flag
     SETBIT(IEC0bits.T2IE); // Enable Timer2 interrupt
