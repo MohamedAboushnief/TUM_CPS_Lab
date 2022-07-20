@@ -39,8 +39,9 @@ volatile bool trigger_print_missed_deadlines = false;
 #define center_y 371
 
 #define radius 224
+#define frequency 1
+#define angular_velocity 2*pi*frequency
 
-#define angular_velocity 2*pi*1
 
 
 
@@ -221,7 +222,6 @@ touch_screen_dimension_set(DIMENSION dim) {
         Nop();
         SETBIT(PORTEbits.RE2);
         Nop();
-
         SETBIT(PORTEbits.RE3);
         Nop();
 
@@ -229,10 +229,8 @@ touch_screen_dimension_set(DIMENSION dim) {
         // set y coordinate as read
         SETBIT(PORTEbits.RE1);
         Nop();
-
         CLEARBIT(PORTEbits.RE2);
         Nop();
-
         CLEARBIT(PORTEbits.RE3);
         Nop();
 
@@ -259,8 +257,14 @@ uint16_t touch_screen_position_read_y(void) {
 
 }
 
-void butterworth_filter() {
+uint16_t butterworth_filter_x(x) {
+    x = filter(x);
+    return x;
+}
 
+uint16_t butterworth_filter_y(y) {
+    y = filter(y);
+    return y;
 }
 
 void read_touchscreen() {
@@ -277,7 +281,10 @@ void read_touchscreen() {
 /*
  * PD Controller
  */
-void pd_controller() {
+void pd_controller(x_pos, y_pos) {
+    // filter x coordinate
+    x_pos = butterworth_filter_x(x_pos);
+    y_pos = butterworth_filter_y(y_pos);
     
 }
 
@@ -357,7 +364,6 @@ void __attribute__((__interrupt__, __shadow__, __auto_psv__)) _T1Interrupt(void)
     counterHundredHz++;
     if (counterHundredHz >= 1) {
         counterHundredHz = 0;
-
         trigger_read_touchscreen = true;
 
     }
@@ -366,7 +372,6 @@ void __attribute__((__interrupt__, __shadow__, __auto_psv__)) _T1Interrupt(void)
     counterFiftyHz++;
     if (counterFiftyHz >= 2) {
         counterFiftyHz = 0;
-
         trigger_pd_controller = true;
     }
 
