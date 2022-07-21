@@ -12,7 +12,6 @@
 #include "lcd.h"
 #include "led.h"
 
-
 typedef enum {
     SERVO_1,
     SERVO_2
@@ -24,13 +23,7 @@ typedef enum {
 
 } DIMENSION;
 
-volatile int counterHundredHz = 0;
-volatile int counterFiftyHz = 0;
-volatile int counterFiveHz = 0;
 
-volatile bool trigger_read_touchscreen = false;
-volatile bool trigger_pd_controller = false;
-volatile bool trigger_print_missed_deadlines = false;
 /*
  * Parameter
  */
@@ -40,7 +33,7 @@ volatile bool trigger_print_missed_deadlines = false;
 
 #define radius 224
 #define frequency 1
-#define angular_velocity 2*pi*frequency
+#define angular_velocity_w 2*pi*frequency
 
 
 
@@ -59,8 +52,44 @@ volatile bool trigger_print_missed_deadlines = false;
 /*
  * Global Variables
  */
-uint16_t x_pos = 0;
-uint16_t y_pos = 0;
+
+volatile int counterHundredHz = 0;
+volatile int counterFiftyHz = 0;
+volatile int counterFiveHz = 0;
+
+volatile bool trigger_read_touchscreen = false;
+volatile bool trigger_pd_controller = false;
+volatile bool trigger_print_missed_deadlines = false;
+
+// PID Variables
+volatile double kpx = 0.6; // Proportional Control Constant
+volatile int kdx = 80; // Derivative Control Constant
+volatile double kpy = 0.65; // Proportional Control Constant
+volatile int kdy = 80; // Derivative Control Constant
+
+
+float t = 0.01;
+
+uint16_t x_current_pos = 0;
+uint16_t y_current_pos = 0;
+uint16_t x_current_filtered = 0;
+uint16_t x_previous_pos = 0;
+uint16_t x_previous_filtered = 0;
+
+uint16_t y_current_filtered = 0;
+uint16_t y_previous_pos = 0;
+uint16_t y_previous_filtered = 0;
+uint16_t x_set_pos = 0;
+uint16_t y_set_pos = 0;
+int error_x = 0;
+int derivative_x = 0;
+int last_error_x = 0;
+int error_y = 0;
+int derivative_y = 0;
+int last_error_y = 0;
+float theta_x = 0;
+float theta_y = 0;
+
 bool trigger_exec = false;
 int deadlines_missed = 0;
 
@@ -102,10 +131,6 @@ void initialize_timer() {
     //    CLEARBIT(IEC0bits.T2IE); // Disable Timer2 interrupt enable control bit
     //    PR2 = 4000; // Set timer period 20ms: // 4000= 20*10^-3 * 12.8*10^6 * 1/64
     //    SETBIT(T2CONbits.TON); /* Turn Timer 2 on */
-
-
-
-
 
 }
 
@@ -257,53 +282,106 @@ uint16_t touch_screen_position_read_y(void) {
 
 }
 
+void read_touchscreen() {
+
+    //Read the touchscreen
+    touch_screen_dimension_set(x);
+    x_current_pos = touch_screen_position_read_x();
+    touch_screen_dimension_set(y);
+    y_current_pos = touch_screen_position_read_y();
+
+
+}
+
+void setPointGenerator() {
+
+
+
+
+    x_set_pos = center_x + radius * sin(angular_velocity_w * t);
+    y_set_pos = center_y + radius * cos(angular_velocity_w * t);
+
+
+    t = t + 0.01;
+    // returns set point (X,Y) as they are located on circle
+}
+
+/*
+ * Butterworth Filter N=1, Cutoff 3 Hz, sampling @ 50 Hz
+ *
+ * Butterworth formula from Matlab
+ * [b,a]=butter(N,Wn,ftype)
+ * N: Nth-order
+ * Wn: Normalized cutoff frequency
+ * ftype: high or low
+ * Wn = cufOffFrequency/(0.5*samplingRate)      Nyquist Theorem
+ * 
+ * N=1
+ * Wn=3/(0.5*50)=3/25=0.12
+ * Using [b,a]=butter(1, 0.12, 'low') we got:
+ * b =
+ *      0.1602  0.1602
+ * a = 
+ *      1.0000  -0.6796
+ */
+
 uint16_t butterworth_filter_x(x) {
-    x = filter(x);
-    return x;
+    x_current_filtered = (0.1602 * x) + (0.1602 * x_previous_pos) + (0.6796 * x_previous_filtered);
+    x_previous_pos = x;
+    x_previous_filtered = x_current_filtered;
+    return x_current_filtered;
 }
 
 uint16_t butterworth_filter_y(y) {
-    y = filter(y);
-    return y;
-}
-
-void read_touchscreen() {
-    
-    //Read the touchscreen
-    touch_screen_dimension_set(x);
-    x_pos = touch_screen_position_read_x();
-    touch_screen_dimension_set(y);
-    y_pos = touch_screen_position_read_y();
-
-
+    y_current_filtered = (0.1602 * y) + (0.1602 * y_previous_pos) + (0.6796 * y_previous_filtered);
+    y_previous_pos = y;
+    y_previous_filtered = y_current_filtered;
+    return y_current_filtered;
 }
 
 /*
  * PD Controller
  */
-void pd_controller(x_pos, y_pos) {
-    // filter x coordinate
-    x_pos = butterworth_filter_x(x_pos);
-    y_pos = butterworth_filter_y(y_pos);
+void pd_controller(x_current_pos, y_current_pos) {
+    setPointGenerator(); // generate setpoint x and y
+
+    // filter x coordinate and y coordinate
+    x_current_pos = butterworth_filter_x(x_current_pos);
+    // calculate the error
+    error_x = x_set_pos - x_current_pos;
+    // calculate the derivative
+    derivative_x = error_x - last_error_x;
     
+    // calculate the control variable
+    theta_x = (kpx * error_x)+(kdx * (derivative_x/0.02)); // period here: 0.02s
+    // Saturation or limit the pwn control variable to protect motor
+
+
+
+
+
+
+
+
+
+    y_current_pos = butterworth_filter_y(y_current_pos);
+    // calculate the error
+    error_y = y_set_pos - y_current_pos;
+    // calculate the derivative
+    derivative_y = error_y - last_error_y;
+    // calculate the control variable
+    theta_y = (kpy * error_y)+(kdy * derivative_y/0.02);
+    // Saturation or limit the pwn control variable to protect motor
+
+
+
 }
-
-/*
- * Butterworth Filter N=1, Cutoff 3 Hz, sampling @ 50 Hz
- */
-
-
-
-
-
-
-
 
 void print_missed_deadlines() {
     lcd_locate(0, 7);
     lcd_printf("missed deadlines: %u", deadlines_missed);
 
-   
+
 }
 
 /*
