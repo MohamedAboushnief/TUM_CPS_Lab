@@ -36,9 +36,6 @@ typedef enum {
 #define angular_velocity_w 2*pi*frequency
 
 
-
-
-
 /*
  * Common Definitions
  */
@@ -46,8 +43,6 @@ typedef enum {
 #define TCKPS_8   0x01
 #define TCKPS_64  0x02
 #define TCKPS_256 0x03
-
-
 
 /*
  * Global Variables
@@ -81,14 +76,15 @@ uint16_t y_previous_pos = 0;
 uint16_t y_previous_filtered = 0;
 uint16_t x_set_pos = 0;
 uint16_t y_set_pos = 0;
+
 int error_x = 0;
 int derivative_x = 0;
 int last_error_x = 0;
 int error_y = 0;
 int derivative_y = 0;
 int last_error_y = 0;
-float theta_x = 0;
-float theta_y = 0;
+int theta_x = 0;
+int theta_y = 0;
 
 bool trigger_exec = false;
 int deadlines_missed = 0;
@@ -295,13 +291,8 @@ void read_touchscreen() {
 
 void setPointGenerator() {
 
-
-
-
     x_set_pos = center_x + radius * sin(angular_velocity_w * t);
     y_set_pos = center_y + radius * cos(angular_velocity_w * t);
-
-
     t = t + 0.01;
     // returns set point (X,Y) as they are located on circle
 }
@@ -345,36 +336,59 @@ uint16_t butterworth_filter_y(y) {
 void pd_controller(x_current_pos, y_current_pos) {
     setPointGenerator(); // generate setpoint x and y
 
+    //        lcd_locate(0, 3);
+    //        lcd_printf("x set pos: %u", x_set_pos);
+    //        lcd_locate(0, 4);
+    //        lcd_printf("y set pos: %u", y_set_pos);
+
     // filter x coordinate and y coordinate
     x_current_pos = butterworth_filter_x(x_current_pos);
     // calculate the error
     error_x = x_set_pos - x_current_pos;
     // calculate the derivative
     derivative_x = error_x - last_error_x;
-    
-    // calculate the control variable
-    theta_x = (kpx * error_x)+(kdx * (derivative_x/0.02)); // period here: 0.02s
-    // Saturation or limit the pwn control variable to protect motor
+
+    // calculate the control variable, period of the loop is 20ms
+    theta_x = (kpx * error_x)+(kdx * (derivative_x / 20));
+
+    // Saturate (map) the pwm control variable to protect motor
 
 
 
 
 
+    last_error_x = error_x;
 
 
 
 
     y_current_pos = butterworth_filter_y(y_current_pos);
+//    lcd_locate(0, 3);
+//    lcd_printf("x_f_pos: %u", x_current_pos);
+//    lcd_locate(0, 4);
+//    lcd_printf("y_f_pos: %u", y_current_pos);
+
+
     // calculate the error
     error_y = y_set_pos - y_current_pos;
     // calculate the derivative
     derivative_y = error_y - last_error_y;
-    // calculate the control variable
-    theta_y = (kpy * error_y)+(kdy * derivative_y/0.02);
-    // Saturation or limit the pwn control variable to protect motor
+    // calculate the control variable, period of the loop is 20ms
+    theta_y = (kpy * error_y)+(kdy * derivative_y / 20);
+
+    // Saturate (map) the pwm control variable to protect motor
 
 
+    last_error_y = error_y;
 
+        lcd_locate(0, 3);
+        lcd_printf("                         ");
+        lcd_locate(0, 3);
+        lcd_printf("thetaX: %d", theta_x);
+        lcd_locate(0, 4);
+        lcd_printf("                         ");
+        lcd_locate(0, 4);
+        lcd_printf("thetaY: %d", theta_y);
 }
 
 void print_missed_deadlines() {
@@ -409,7 +423,7 @@ void main_loop() {
         }
 
         if (trigger_pd_controller == true) {
-            pd_controller();
+            pd_controller(x_current_pos, y_current_pos);
             trigger_pd_controller = false;
         }
 
@@ -424,9 +438,9 @@ void main_loop() {
         //        }
 
         lcd_locate(0, 5);
-        lcd_printf("x pos: %u", x_pos);
+        lcd_printf("x pos: %u", x_current_pos);
         lcd_locate(0, 6);
-        lcd_printf("y pos: %u", y_pos);
+        lcd_printf("y pos: %u", y_current_pos);
 
 
     }
@@ -466,11 +480,6 @@ void __attribute__((__interrupt__, __shadow__, __auto_psv__)) _T1Interrupt(void)
     //    }
     //
     //    trigger_exec = true;
-
-
-
-
-
 
 }
 
