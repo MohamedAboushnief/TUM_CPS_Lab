@@ -29,10 +29,10 @@ typedef enum {
  */
 #define pi 3.14159265358979323846
 #define center_x 409
-#define center_y 371
+#define center_y 310
 
-#define radius 224
-#define frequency 1
+#define radius 200
+#define frequency 2.5
 #define angular_velocity_w 2*pi*frequency
 
 
@@ -55,12 +55,13 @@ volatile int counterFiveHz = 0;
 volatile bool trigger_read_touchscreen = false;
 volatile bool trigger_pd_controller = false;
 volatile bool trigger_print_missed_deadlines = false;
+volatile bool trigger_exec = true;
 
 // PID Variables
-volatile double kpx = 0.6; // Proportional Control Constant
+volatile double kpx = 0.3; // Proportional sControl Constant
 volatile int kdx = 80; // Derivative Control Constant
-volatile double kpy = 0.65; // Proportional Control Constant
-volatile int kdy = 80; // Derivative Control Constant
+volatile double kpy = 0.2; // Proportional Control Constant
+volatile int kdy = 60; // Derivative Control Constant
 
 
 float t = 0.01;
@@ -85,8 +86,10 @@ int derivative_y = 0;
 int last_error_y = 0;
 int theta_x = 0;
 int theta_y = 0;
+double dutycicle_x = .0;
+double dutycicle_y = .0;
 
-bool trigger_exec = false;
+
 int deadlines_missed = 0;
 
 /*
@@ -117,16 +120,16 @@ void initialize_timer() {
     SETBIT(T1CONbits.TON); // Start Timer  
 
 
-    //    //setup Timer 2
-    //    CLEARBIT(T2CONbits.TON); // Disable Timer
-    //    CLEARBIT(T2CONbits.TCS); // Select internal instruction cycle clock
-    //    CLEARBIT(T2CONbits.TGATE); // Disable Gated Timer mode
-    //    TMR2 = 0x00; // Clear timer register
-    //    T2CONbits.TCKPS = 0b10; // Select 1:64 Prescaler
-    //    CLEARBIT(IFS0bits.T2IF); // Clear Timer2 interrupt status flag
-    //    CLEARBIT(IEC0bits.T2IE); // Disable Timer2 interrupt enable control bit
-    //    PR2 = 4000; // Set timer period 20ms: // 4000= 20*10^-3 * 12.8*10^6 * 1/64
-    //    SETBIT(T2CONbits.TON); /* Turn Timer 2 on */
+    //setup Timer 2
+    CLEARBIT(T2CONbits.TON); // Disable Timer
+    CLEARBIT(T2CONbits.TCS); // Select internal instruction cycle clock
+    CLEARBIT(T2CONbits.TGATE); // Disable Gated Timer mode
+    TMR2 = 0x00; // Clear timer register
+    T2CONbits.TCKPS = 0b10; // Select 1:64 Prescaler
+    CLEARBIT(IFS0bits.T2IF); // Clear Timer2 interrupt status flag
+    CLEARBIT(IEC0bits.T2IE); // Disable Timer2 interrupt enable control bit
+    PR2 = 4000; // Set timer period 20ms: // 4000= 20*10^-3 * 12.8*10^6 * 1/64
+    SETBIT(T2CONbits.TON); /* Turn Timer 2 on */
 
 }
 
@@ -354,13 +357,7 @@ void pd_controller(x_current_pos, y_current_pos) {
     // Saturate (map) the pwm control variable to protect motor
 
 
-
-
-
     last_error_x = error_x;
-
-
-
 
     y_current_pos = butterworth_filter_y(y_current_pos);
 //    lcd_locate(0, 3);
@@ -381,14 +378,39 @@ void pd_controller(x_current_pos, y_current_pos) {
 
     last_error_y = error_y;
 
-        lcd_locate(0, 3);
-        lcd_printf("                         ");
-        lcd_locate(0, 3);
-        lcd_printf("thetaX: %d", theta_x);
-        lcd_locate(0, 4);
-        lcd_printf("                         ");
-        lcd_locate(0, 4);
-        lcd_printf("thetaY: %d", theta_y);
+        
+    
+        if(theta_x<-300 ){
+            theta_x = -300;
+        }else if(theta_x>300){
+            theta_x = 300;
+        }
+        if(theta_y<-300 ){
+            theta_y = -300;
+        }else if(theta_y>300){
+            theta_y = 300;
+        }
+    
+//        lcd_locate(0, 3);
+//        lcd_printf("                         ");
+//        lcd_locate(0, 3);
+//        lcd_printf("thetaX: %d", theta_x);
+//        lcd_locate(0, 4);
+//        lcd_printf("                         ");
+//        lcd_locate(0, 4);
+//        lcd_printf("thetaY: %d", theta_y);
+        
+        // transfer the range from -400-400 to 0.9-2.1
+        dutycicle_x = (theta_x-(-300))/600.0*(2.1-0.9)+0.9;
+        dutycicle_y = (theta_y-(-300))/600.0*(2.1-0.9)+0.9;
+//        lcd_locate(0, 3);
+//        lcd_printf("                         ");
+//        lcd_locate(0, 3);
+//        lcd_printf("thetaX: %f", dutycicle_x);
+//        lcd_locate(0, 4);
+//        lcd_printf("                         ");
+//        lcd_locate(0, 4);
+//        lcd_printf("thetaY: %f", dutycicle_y);
 }
 
 void print_missed_deadlines() {
@@ -411,6 +433,14 @@ void main_loop() {
     initialize_timer();
 
     touch_screen_init();
+    
+    // initialize servos
+    servo_init(SERVO_1);
+    Nop();
+    Nop();
+    servo_init(SERVO_2);
+    Nop();
+    Nop();
 
     while (TRUE) {
 
@@ -421,11 +451,14 @@ void main_loop() {
             trigger_read_touchscreen = false;
 
         }
-
+        
+            
+            
         if (trigger_pd_controller == true) {
-            pd_controller(x_current_pos, y_current_pos);
+           pd_controller(x_current_pos, y_current_pos);
             trigger_pd_controller = false;
         }
+        servo_control(20-dutycicle_x, 20-dutycicle_y);
 
         if (trigger_print_missed_deadlines == true) {
             print_missed_deadlines();
@@ -434,13 +467,17 @@ void main_loop() {
 
 
 
-        //            trigger_exec = false;
-        //        }
+        if (trigger_print_missed_deadlines == true){
+            
+            deadlines_missed = deadlines_missed+1;
+            
+               }
+        
 
-        lcd_locate(0, 5);
-        lcd_printf("x pos: %u", x_current_pos);
-        lcd_locate(0, 6);
-        lcd_printf("y pos: %u", y_current_pos);
+//        lcd_locate(0, 5);
+//        lcd_printf("x pos: %u", x_current_pos);
+//        lcd_locate(0, 6);
+//        lcd_printf("y pos: %u", y_current_pos);
 
 
     }
